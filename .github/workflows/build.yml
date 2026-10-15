@@ -1,0 +1,42 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Arrange files
+        run: |
+          mkdir -p lib android/app/src/main/kotlin/com/example/hesn
+          if [ -f main.dart ]; then mv main.dart lib/main.dart; fi
+          if [ -f MainActivity.kt ]; then mv MainActivity.kt android/app/src/main/kotlin/com/example/hesn/MainActivity.kt; fi
+          if [ -f AndroidManifest.xml ]; then mv AndroidManifest.xml android/app/src/main/AndroidManifest.xml; fi
+
+      - name: Generate missing Android files
+        run: |
+          flutter create --org com.example --project-name hesn --platforms=android /tmp/gen
+          cp -rn /tmp/gen/. .
+
+      - run: flutter pub get
+
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hesn-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
